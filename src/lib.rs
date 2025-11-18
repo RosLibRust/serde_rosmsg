@@ -59,6 +59,7 @@
 //! ```
 
 #![recursion_limit = "1024"]
+#![allow(unexpected_cfgs)]
 
 #[doc(inline)]
 pub use self::de::*;

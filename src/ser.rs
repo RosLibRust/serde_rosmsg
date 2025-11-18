@@ -111,6 +111,11 @@ where
     type SerializeStructVariant = Impossible<(), Error>;
 
     #[inline]
+    fn is_human_readable(&self) -> bool {
+        false
+    }
+
+    #[inline]
     fn serialize_bool(self, v: bool) -> SerializerResult {
         self.writer
             .write_u8(if v { 1 } else { 0 })

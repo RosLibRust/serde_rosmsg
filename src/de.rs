@@ -173,6 +173,11 @@ impl<'de, 'a, R: io::Read> de::Deserializer<'de> for &'a mut Deserializer<R> {
     type Error = Error;
 
     #[inline]
+    fn is_human_readable(&self) -> bool {
+        false
+    }
+
+    #[inline]
     fn deserialize_any<V>(self, _visitor: V) -> Result<V::Value>
     where
         V: de::Visitor<'de>,

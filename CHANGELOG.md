@@ -8,6 +8,20 @@
 
 ### Fixed
 
+## 0.5.1
+
+### Added
+
+- Implemented `is_human_readable()` to return `false` for both Serializer and Deserializer, correctly indicating that ROSMSG is a binary format
+
+### Changed
+
+- Updated `byteorder` dependency from 1.0.0 to 1.5
+
+### Fixed
+
+- Suppressed `unexpected_cfgs` warning from error-chain crate
+
 ## 0.5.0
 
 ### Added

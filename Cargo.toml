@@ -8,7 +8,7 @@ license = "MIT"
 name = "roslibrust_serde_rosmsg"
 readme = "README.md"
 repository = "https://github.com/roslibrust/serde_rosmsg"
-version = "0.5.1"
+version = "0.6.0"
 edition = "2021"
 
 [dependencies]

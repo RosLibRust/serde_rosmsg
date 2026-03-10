@@ -8,6 +8,16 @@
 
 ### Fixed
 
+## 0.6.0
+
+### Added
+
+### Changed
+
+- Fixed dependency versions to fix build with minimal versions
+
+### Fixed
+
 ## 0.5.1
 
 ### Added

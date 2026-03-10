@@ -5,6 +5,7 @@ Original work and all credit goes to Adnan Ademovic.
 This fork will only be maintained until serde_rosmsg is updated or someone else
 can take over maintenance.
 
+[![CI](https://github.com/roslibrust/serde_rosmsg/actions/workflows/ci.yml/badge.svg)](https://github.com/roslibrust/serde_rosmsg/actions/workflows/ci.yml)
 [![MIT Licensed](https://img.shields.io/crates/l/roslibrust_serde_rosmsg.svg?maxAge=3600)](./LICENSE)
 [![Crates.io](https://img.shields.io/crates/v/roslibrust_serde_rosmsg.svg?maxAge=3600)](https://crates.io/crates/roslibrust_serde_rosmsg)
 

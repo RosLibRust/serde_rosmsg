@@ -62,9 +62,7 @@ fn serialize_image_to_prealloc_cursor(
 }
 
 fn criterion_benchmark(c: &mut Criterion) {
-    c.bench_function("parse_image", |b| {
-        b.iter(|| parse_image())
-    });
+    c.bench_function("parse_image", |b| b.iter(|| parse_image()));
 
     let image: VecBytesImage = roslibrust_serde_rosmsg::from_slice(IMAGE_DATA).unwrap();
 

@@ -25,18 +25,6 @@ pub struct Time {
     pub nsecs: u32,
 }
 
-// Basic Image Representation
-#[derive(Deserialize, Serialize, PartialEq, Debug)]
-pub struct VecImage {
-    pub header: Header,
-    pub height: u32,
-    pub width: u32,
-    pub encoding: String,
-    pub is_bigendian: u8,
-    pub step: u32,
-    pub data: Vec<u8>,
-}
-
 // Includes serde_bytes optimization
 #[derive(Deserialize, Serialize, PartialEq, Debug)]
 pub struct VecBytesImage {
@@ -53,33 +41,9 @@ pub struct VecBytesImage {
     pub data: Vec<u8>,
 }
 
-// An alternate expression option that also works
-#[derive(Deserialize, Serialize, PartialEq, Debug)]
-pub struct SharedImage {
-    pub header: Header,
-    pub height: u32,
-    pub width: u32,
-    pub encoding: String,
-    pub is_bigendian: u8,
-    pub step: u32,
-    pub data: Box<[u8]>,
-}
-
-#[inline]
-fn parse_vec_image() {
-    let image: VecImage = roslibrust_serde_rosmsg::from_slice(IMAGE_DATA).unwrap();
-    black_box(image);
-}
-
 #[inline]
 fn parse_vec_bytes_image() {
     let image: VecBytesImage = roslibrust_serde_rosmsg::from_slice(IMAGE_DATA).unwrap();
-    black_box(image);
-}
-
-#[inline]
-fn parse_shared_image() {
-    let image: SharedImage = roslibrust_serde_rosmsg::from_slice(IMAGE_DATA).unwrap();
     black_box(image);
 }
 
@@ -103,11 +67,9 @@ fn serialize_vec_bytes_image_to_preallocated_vec(
 }
 
 fn criterion_benchmark(c: &mut Criterion) {
-    c.bench_function("parse_vec_image", |b| b.iter(|| parse_vec_image()));
     c.bench_function("parse_vec_bytes_image", |b| {
         b.iter(|| parse_vec_bytes_image())
     });
-    c.bench_function("parse_shared_image", |b| b.iter(|| parse_shared_image()));
 
     let image: VecBytesImage = roslibrust_serde_rosmsg::from_slice(IMAGE_DATA).unwrap();
 

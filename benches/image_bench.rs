@@ -53,33 +53,6 @@ pub struct VecBytesImage {
     pub data: Vec<u8>,
 }
 
-// Below two options not currently supported
-// // No serde_bytes optimization referenced data instead of copying it
-// // Note: Deserializer is not really setup to take advantage of this yet
-// #[derive(Deserialize, Serialize, PartialEq, Debug)]
-// pub struct RefImage<'a> {
-//     pub header: Header,
-//     pub height: u32,
-//     pub width: u32,
-//     pub encoding: String,
-//     pub is_bigendian: u8,
-//     pub step: u32,
-//     pub data: &'a [u8],
-// }
-
-// // With serde_bytes optimization, on referenced data
-// #[derive(Deserialize, Serialize, PartialEq, Debug)]
-// pub struct RefBytesImage<'a> {
-//     pub header: Header,
-//     pub height: u32,
-//     pub width: u32,
-//     pub encoding: String,
-//     pub is_bigendian: u8,
-//     pub step: u32,
-//     #[serde(with = "serde_bytes")]
-//     pub data: &'a [u8],
-// }
-
 // An alternate expression option that also works
 #[derive(Deserialize, Serialize, PartialEq, Debug)]
 pub struct SharedImage {
@@ -115,6 +88,20 @@ fn serialize_vec_bytes_image(image: &VecBytesImage) {
     black_box(roslibrust_serde_rosmsg::to_vec(image).unwrap());
 }
 
+#[inline]
+fn serialize_vec_bytes_image_to_new_vec(image: &VecBytesImage) {
+    black_box(roslibrust_serde_rosmsg::to_vec(image).unwrap());
+}
+
+#[inline]
+fn serialize_vec_bytes_image_to_preallocated_vec(
+    image: &VecBytesImage,
+    cursor: &mut std::io::Cursor<Vec<u8>>,
+) {
+    cursor.set_position(0);
+    black_box(roslibrust_serde_rosmsg::to_writer(cursor, image).unwrap());
+}
+
 fn criterion_benchmark(c: &mut Criterion) {
     c.bench_function("parse_vec_image", |b| b.iter(|| parse_vec_image()));
     c.bench_function("parse_vec_bytes_image", |b| {
@@ -123,8 +110,23 @@ fn criterion_benchmark(c: &mut Criterion) {
     c.bench_function("parse_shared_image", |b| b.iter(|| parse_shared_image()));
 
     let image: VecBytesImage = roslibrust_serde_rosmsg::from_slice(IMAGE_DATA).unwrap();
+
+    // Original serialization benchmark (kept for backward compatibility)
     c.bench_function("serialize_vec_bytes_image", |b| {
         b.iter(|| serialize_vec_bytes_image(&image))
+    });
+
+    // Benchmark serialization to a new Vec (allocates on each call)
+    c.bench_function("serialize_vec_bytes_image_to_new_vec", |b| {
+        b.iter(|| serialize_vec_bytes_image_to_new_vec(&image))
+    });
+
+    // Benchmark serialization to a pre-allocated Vec (reuses allocation)
+    // Pre-allocate a buffer large enough for the serialized image
+    let serialized_size = roslibrust_serde_rosmsg::to_vec(&image).unwrap().len();
+    c.bench_function("serialize_vec_bytes_image_to_preallocated_vec", |b| {
+        let mut cursor = std::io::Cursor::new(Vec::with_capacity(serialized_size));
+        b.iter(|| serialize_vec_bytes_image_to_preallocated_vec(&image, &mut cursor))
     });
 }
 

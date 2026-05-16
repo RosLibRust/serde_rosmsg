@@ -421,12 +421,15 @@ impl ser::Error for Error {
     }
 }
 
-/// Serialize the given data structure `T` as ROSMSG into the IO stream.
+/// Serialize the given data structure `T` as ROSMSG into a seekable IO stream.
 ///
 /// Serialization can fail if `T`'s implementation of `Serialize` decides to
 /// fail. It can also fail if the structure contains unsupported elements.
 ///
-/// Finally, it can also fail due to writer failure.
+/// Finally, it can also fail due to writer or seek failure.
+///
+/// This function writes a placeholder length, serializes the data directly to the writer,
+/// then seeks back to write the correct length. This avoids intermediate buffer allocation.
 ///
 /// # Examples
 ///
@@ -439,15 +442,31 @@ impl ser::Error for Error {
 /// ```
 pub fn to_writer<W, T>(writer: &mut W, value: &T) -> Result<()>
 where
-    W: io::Write,
+    W: io::Write + io::Seek,
     T: ser::Serialize,
 {
-    let mut buffer = Vec::new();
-    value.serialize(&mut Serializer::new(&mut buffer))?;
-    writer
-        .write_u32::<LittleEndian>(buffer.len() as u32)
-        .and_then(|_| writer.write_all(&buffer))
-        .map_err(|v| v.into())
+    // Write placeholder for length (will be overwritten)
+    let start_pos = writer.stream_position()?;
+    writer.write_u32::<LittleEndian>(0)?;
+
+    // Serialize the value
+    let data_start = writer.stream_position()?;
+    let mut serializer = Serializer::new(writer);
+    value.serialize(&mut serializer)?;
+    let writer = serializer.into_inner();
+    let end_pos = writer.stream_position()?;
+
+    // Calculate the data length
+    let length = (end_pos - data_start) as u32;
+
+    // Seek back and write the actual length
+    writer.seek(io::SeekFrom::Start(start_pos))?;
+    writer.write_u32::<LittleEndian>(length)?;
+
+    // Seek back to end
+    writer.seek(io::SeekFrom::Start(end_pos))?;
+
+    Ok(())
 }
 
 /// Variant of [to_writer] where the 4 bytes for the overall message length are skipped
@@ -738,5 +757,41 @@ mod tests {
                     49, 50, 51
                 ] == answer
         );
+    }
+
+    #[test]
+    fn to_writer_basic() {
+        let mut cursor = io::Cursor::new(Vec::new());
+        to_writer(&mut cursor, &String::from("Hello, World!")).unwrap();
+        assert_eq!(cursor.into_inner(), b"\x11\0\0\0\x0d\0\0\0Hello, World!");
+    }
+
+    #[test]
+    fn to_writer_same_as_to_vec() {
+        let test_value = vec![1u32, 2u32, 3u32, 4u32, 5u32];
+
+        let expected = to_vec(&test_value).unwrap();
+
+        let mut cursor = io::Cursor::new(Vec::new());
+        to_writer(&mut cursor, &test_value).unwrap();
+
+        assert_eq!(cursor.into_inner(), expected);
+    }
+
+    #[test]
+    fn to_writer_multiple_times() {
+        let mut cursor = io::Cursor::new(Vec::new());
+
+        // First write
+        to_writer(&mut cursor, &String::from("Hello")).unwrap();
+
+        // Second write appends
+        to_writer(&mut cursor, &String::from("World")).unwrap();
+
+        let result = cursor.into_inner();
+
+        // Should contain both messages
+        assert_eq!(&result[0..13], b"\x09\0\0\0\x05\0\0\0Hello");
+        assert_eq!(&result[13..26], b"\x09\0\0\0\x05\0\0\0World");
     }
 }

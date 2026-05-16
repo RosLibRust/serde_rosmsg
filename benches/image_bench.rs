@@ -42,23 +42,18 @@ pub struct VecBytesImage {
 }
 
 #[inline]
-fn parse_vec_bytes_image() {
+fn parse_image() {
     let image: VecBytesImage = roslibrust_serde_rosmsg::from_slice(IMAGE_DATA).unwrap();
     black_box(image);
 }
 
 #[inline]
-fn serialize_vec_bytes_image(image: &VecBytesImage) {
+fn serialize_image_to_new_vec(image: &VecBytesImage) {
     black_box(roslibrust_serde_rosmsg::to_vec(image).unwrap());
 }
 
 #[inline]
-fn serialize_vec_bytes_image_to_new_vec(image: &VecBytesImage) {
-    black_box(roslibrust_serde_rosmsg::to_vec(image).unwrap());
-}
-
-#[inline]
-fn serialize_vec_bytes_image_to_preallocated_vec(
+fn serialize_image_to_prealloc_cursor(
     image: &VecBytesImage,
     cursor: &mut std::io::Cursor<Vec<u8>>,
 ) {
@@ -67,34 +62,29 @@ fn serialize_vec_bytes_image_to_preallocated_vec(
 }
 
 fn criterion_benchmark(c: &mut Criterion) {
-    c.bench_function("parse_vec_bytes_image", |b| {
-        b.iter(|| parse_vec_bytes_image())
+    c.bench_function("parse_image", |b| {
+        b.iter(|| parse_image())
     });
 
     let image: VecBytesImage = roslibrust_serde_rosmsg::from_slice(IMAGE_DATA).unwrap();
 
-    // Original serialization benchmark (kept for backward compatibility)
-    c.bench_function("serialize_vec_bytes_image", |b| {
-        b.iter(|| serialize_vec_bytes_image(&image))
-    });
-
     // Benchmark serialization to a new Vec (allocates on each call)
-    c.bench_function("serialize_vec_bytes_image_to_new_vec", |b| {
-        b.iter(|| serialize_vec_bytes_image_to_new_vec(&image))
+    c.bench_function("serialize_image_to_new_vec", |b| {
+        b.iter(|| serialize_image_to_new_vec(&image))
     });
 
     // Benchmark serialization to a pre-allocated Vec (reuses allocation)
     // Pre-allocate a buffer large enough for the serialized image
     let serialized_size = roslibrust_serde_rosmsg::to_vec(&image).unwrap().len();
-    c.bench_function("serialize_vec_bytes_image_to_preallocated_vec", |b| {
+    c.bench_function("serialize_image_to_prealloc_cursor", |b| {
         let mut cursor = std::io::Cursor::new(Vec::with_capacity(serialized_size));
-        b.iter(|| serialize_vec_bytes_image_to_preallocated_vec(&image, &mut cursor))
+        b.iter(|| serialize_image_to_prealloc_cursor(&image, &mut cursor))
     });
 }
 
 criterion_group!(
     name = benches;
-    config = Criterion::default().with_profiler(PProfProfiler::new(1000, Output::Flamegraph(None)));
+    config = Criterion::default().with_profiler(PProfProfiler::new(100, Output::Flamegraph(None)));
     targets = criterion_benchmark
 );
 criterion_main!(benches);

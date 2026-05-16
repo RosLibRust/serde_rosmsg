@@ -14,7 +14,7 @@ use super::error::{Error, ErrorKind, Result, ResultExt};
 use byteorder::{LittleEndian, ReadBytesExt};
 use error_chain::*;
 use serde::de;
-use std::io;
+use std::io::{self, Read};
 
 /// A structure for deserializing ROSMSG into Rust values.
 ///
@@ -130,25 +130,32 @@ where
     }
 
     #[inline]
+    fn read_exact_vec(&mut self, length: u32) -> Result<Vec<u8>> {
+        let length = length as usize;
+        let mut buffer = Vec::with_capacity(length);
+        let read = (&mut self.reader)
+            .take(length as u64)
+            .read_to_end(&mut buffer)
+            .chain_err(|| ErrorKind::EndOfBuffer)?;
+        if read != length {
+            bail!(ErrorKind::EndOfBuffer);
+        }
+        Ok(buffer)
+    }
+
+    #[inline]
     fn get_string(&mut self) -> Result<String> {
         let length = self.pop_length()?;
         self.reserve_bytes(length)?;
-        let mut buffer = vec![0; length as usize];
-        self.reader
-            .read_exact(&mut buffer)
-            .chain_err(|| ErrorKind::EndOfBuffer)?;
+        let buffer = self.read_exact_vec(length)?;
         String::from_utf8(buffer).chain_err(|| ErrorKind::BadStringData)
     }
 
     #[inline]
     fn get_byte_buf(&mut self) -> Result<Vec<u8>> {
         let length = self.pop_length()?;
-        let mut buffer = vec![0; length as usize];
-        self.reader
-            .read_exact(&mut buffer)
-            .chain_err(|| ErrorKind::EndOfBuffer)?;
-        self.length -= length;
-        Ok(buffer)
+        self.reserve_bytes(length)?;
+        self.read_exact_vec(length)
     }
 }
 
@@ -599,7 +606,7 @@ pub fn from_slice<'de, T>(bytes: &[u8]) -> Result<T>
 where
     T: de::Deserialize<'de>,
 {
-    from_reader(io::Cursor::new(bytes))
+    from_reader(bytes)
 }
 
 /// Variant of [from_slice] where the 4 bytes for the overall message length
@@ -608,7 +615,7 @@ pub fn from_slice_known_length<'de, T>(bytes: &[u8], length: u32) -> Result<T>
 where
     T: de::Deserialize<'de>,
 {
-    from_reader_known_length(io::Cursor::new(bytes), length)
+    from_reader_known_length(bytes, length)
 }
 
 /// Deserialize an instance of type `T` from a string of ROSMSG data.
